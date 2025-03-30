@@ -307,7 +307,7 @@
         // Get title
         const title = document.title.replace(' | DocSend', '').trim() || 'DocSend Document';
         
-        // Simplified HTML that can be easily downloaded
+        // Simplified HTML that can be easily downloaded - removed download options section
         const html = `
         <!DOCTYPE html>
         <html>
@@ -353,25 +353,6 @@
               height: auto;
               margin: 10px 0;
             }
-            .download-options {
-              display: flex;
-              flex-direction: column;
-              margin: 20px 0;
-              padding: 15px;
-              background: #f0f7ff;
-              border-radius: 4px;
-            }
-            .download-button {
-              display: inline-block;
-              padding: 10px 15px;
-              margin: 5px;
-              background: #1a73e8;
-              color: white;
-              text-decoration: none;
-              border-radius: 4px;
-              text-align: center;
-              font-weight: bold;
-            }
             @media print {
               body {
                 background: white;
@@ -381,9 +362,6 @@
                 box-shadow: none;
                 padding: 0;
                 max-width: 100%;
-              }
-              .download-options {
-                display: none;
               }
               .slide {
                 border: none;
@@ -404,13 +382,6 @@
           <div class="container">
             <h1>${title}</h1>
             
-            <div class="download-options">
-              <p>Click one of the options below to download:</p>
-              <a href="#" class="download-button" id="download-html">Download as Web Page (.html)</a>
-              <a href="#" class="download-button" id="download-docx">Download as Word Document (.docx)</a>
-              <a href="#" class="download-button" id="print-pdf">Print as PDF</a>
-            </div>
-            
             ${slideContents.map(slide => `
               <div class="slide">
                 <div class="slide-header">Slide ${slide.index} of ${totalSlides}</div>
@@ -420,41 +391,6 @@
               </div>
             `).join('')}
           </div>
-          
-          <script>
-            // HTML download
-            document.getElementById('download-html').addEventListener('click', function(e) {
-              e.preventDefault();
-              // Create a clone of the document without download buttons
-              const cloneDoc = document.documentElement.cloneNode(true);
-              const downloadOptions = cloneDoc.querySelector('.download-options');
-              if (downloadOptions) downloadOptions.remove();
-              
-              const htmlContent = '<!DOCTYPE html>' + cloneDoc.outerHTML;
-              const blob = new Blob([htmlContent], {type: 'text/html'});
-              const url = URL.createObjectURL(blob);
-              
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = '${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.html';
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-              URL.revokeObjectURL(url);
-            });
-            
-            // PDF printing
-            document.getElementById('print-pdf').addEventListener('click', function(e) {
-              e.preventDefault();
-              window.print();
-            });
-            
-            // Simple DOCX generation
-            document.getElementById('download-docx').addEventListener('click', function(e) {
-              e.preventDefault();
-              alert("To download as a Word document (.docx):\\n\\n1. Right-click on this page\\n2. Select 'Save As' or 'Save Page As'\\n3. Choose 'Web Page, Complete' or 'Webpage, HTML Only'\\n4. Save the file\\n5. Open it in Microsoft Word or Google Docs");
-            });
-          </script>
         </body>
         </html>
         `;
@@ -472,7 +408,7 @@
         if (!newTab || newTab.closed || typeof newTab.closed === 'undefined') {
           updateStatus('Popup blocked! Please allow popups and try again.', 100);
         } else {
-          updateStatus('Document opened in new tab with download options!', 100);
+          updateStatus('Document opened in new tab! Use Cmd+P to save as PDF.', 100);
           
           // Show close button
           const closeButton = document.createElement('button');
