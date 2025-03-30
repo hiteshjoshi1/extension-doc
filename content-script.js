@@ -1,185 +1,7 @@
 (function() {
     console.log('DocSend Downloader script started');
     
-    // First, try to directly download using URL modification
-    if (window.location.href.includes('blob:https://docsend.com/')) {
-      try {
-        // For blob-based DocSend URLs, we can modify the URL to force download
-        const originalURL = window.location.href;
-        console.log('Detected blob URL, attempting direct download:', originalURL);
-        
-        // Extract the document ID from the URL
-        const match = originalURL.match(/blob:https:\/\/docsend\.com\/([a-zA-Z0-9-]+)/);
-        if (match && match[1]) {
-          const docID = match[1];
-          
-          // Create a status overlay to show progress
-          const overlay = document.createElement('div');
-          overlay.style.position = 'fixed';
-          overlay.style.top = '0';
-          overlay.style.left = '0';
-          overlay.style.width = '100%';
-          overlay.style.height = '100%';
-          overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-          overlay.style.zIndex = '9999999';
-          overlay.style.display = 'flex';
-          overlay.style.flexDirection = 'column';
-          overlay.style.justifyContent = 'center';
-          overlay.style.alignItems = 'center';
-          overlay.style.color = 'white';
-          overlay.style.fontFamily = 'Arial, sans-serif';
-          overlay.style.fontSize = '16px';
-          
-          const message = document.createElement('h2');
-          message.textContent = 'DocSend PDF Downloader';
-          message.style.marginBottom = '20px';
-          
-          const status = document.createElement('div');
-          status.textContent = 'Attempting download...';
-          status.style.marginBottom = '20px';
-          
-          const closeButton = document.createElement('button');
-          closeButton.textContent = 'Cancel';
-          closeButton.style.padding = '10px 20px';
-          closeButton.style.backgroundColor = '#f44336';
-          closeButton.style.color = 'white';
-          closeButton.style.border = 'none';
-          closeButton.style.borderRadius = '4px';
-          closeButton.style.cursor = 'pointer';
-          closeButton.onclick = () => overlay.remove();
-          
-          overlay.appendChild(message);
-          overlay.appendChild(status);
-          overlay.appendChild(closeButton);
-          document.body.appendChild(overlay);
-          
-          // First try: Click the native save button
-          status.textContent = 'Looking for Save as PDF button...';
-          
-          // Try to find the button in different ways
-          const pdfButtons = [
-            ...document.querySelectorAll('button[aria-label="Save as PDF"]'),
-            ...document.querySelectorAll('.save-pdf-button'),
-            ...Array.from(document.querySelectorAll('button')).filter(btn => 
-              (btn.textContent || '').trim().toLowerCase() === 'save as pdf'
-            ),
-            ...document.querySelectorAll('a.pdf-download-button')
-          ];
-          
-          if (pdfButtons.length > 0) {
-            status.textContent = 'Found PDF button. Clicking...';
-            
-            // Try clicking the button
-            setTimeout(() => {
-              try {
-                pdfButtons[0].click();
-                status.textContent = 'PDF download triggered! You may close this or wait for download.';
-                
-                // Check if download started (approximate)
-                setTimeout(() => {
-                  const downloadLinks = document.createElement('div');
-                  downloadLinks.style.marginTop = '20px';
-                  downloadLinks.style.textAlign = 'center';
-                  
-                  // Add manual download options
-                  downloadLinks.innerHTML = `
-                    <p>If download didn't start automatically, try one of these options:</p>
-                    <div style="margin-top: 15px;">
-                      <button id="manual-download" style="padding: 10px 20px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; margin-right: 10px; cursor: pointer;">
-                        Try Alternative Download
-                      </button>
-                      <button id="capture-doc" style="padding: 10px 20px; background-color: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                        Capture Document
-                      </button>
-                    </div>
-                  `;
-                  
-                  overlay.appendChild(downloadLinks);
-                  
-                  // Setup alternative download
-                  document.getElementById('manual-download').onclick = () => {
-                    // Try to use the direct download endpoint
-                    status.textContent = 'Attempting alternative download...';
-                    
-                    // Try to get a direct download URL for this document
-                    const downloadURL = `https://docsend.com/view/${docID}/pdf`;
-                    window.open(downloadURL, '_blank');
-                    
-                    status.textContent = 'Alternative download attempted. Check downloads folder.';
-                  };
-                  
-                  // Setup document capture option
-                  document.getElementById('capture-doc').onclick = () => {
-                    overlay.remove();
-                    captureDocument();
-                  };
-                  
-                }, 3000);
-                
-              } catch (error) {
-                console.error('Error clicking PDF button:', error);
-                status.textContent = 'Error clicking PDF button. Trying alternative methods...';
-                
-                // Try alternative download methods
-                setTimeout(() => {
-                  // Method 1: Try to find and use download attribute
-                  const links = document.querySelectorAll('a[download]');
-                  if (links.length > 0) {
-                    links[0].click();
-                    status.textContent = 'Alternative download triggered!';
-                  } else {
-                    status.textContent = 'Could not trigger PDF download. Switching to capture mode...';
-                    
-                    // Show capture button
-                    const captureButton = document.createElement('button');
-                    captureButton.textContent = 'Capture Document';
-                    captureButton.style.padding = '10px 20px';
-                    captureButton.style.backgroundColor = '#4CAF50';
-                    captureButton.style.color = 'white';
-                    captureButton.style.border = 'none';
-                    captureButton.style.borderRadius = '4px';
-                    captureButton.style.marginTop = '20px';
-                    captureButton.style.cursor = 'pointer';
-                    captureButton.onclick = () => {
-                      overlay.remove();
-                      captureDocument();
-                    };
-                    
-                    overlay.appendChild(captureButton);
-                  }
-                }, 1000);
-              }
-            }, 1000);
-          } else {
-            status.textContent = 'No PDF button found. Switching to capture mode...';
-            
-            // Show capture button
-            const captureButton = document.createElement('button');
-            captureButton.textContent = 'Capture Document';
-            captureButton.style.padding = '10px 20px';
-            captureButton.style.backgroundColor = '#4CAF50';
-            captureButton.style.color = 'white';
-            captureButton.style.border = 'none';
-            captureButton.style.borderRadius = '4px';
-            captureButton.style.marginTop = '20px';
-            captureButton.style.cursor = 'pointer';
-            captureButton.onclick = () => {
-              overlay.remove();
-              captureDocument();
-            };
-            
-            overlay.appendChild(captureButton);
-          }
-          
-          return; // Exit early since we're handling with the overlay
-        }
-      } catch (error) {
-        console.error('Error with direct download:', error);
-        // Continue to regular capture approach
-      }
-    }
-    
-    // Otherwise, proceed with regular capture UI
+    // Main code: Display capture button UI
     const overlay = document.createElement('div');
     overlay.style.position = 'fixed';
     overlay.style.top = '0';
@@ -201,49 +23,8 @@
     message.style.marginBottom = '20px';
     
     const details = document.createElement('div');
-    details.textContent = 'Choose download method';
+    details.textContent = 'Click button below to capture the document';
     details.style.marginBottom = '30px';
-    
-    // Try direct download first
-    const directButton = document.createElement('button');
-    directButton.textContent = 'Click Save as PDF Button';
-    directButton.style.padding = '12px 24px';
-    directButton.style.backgroundColor = '#4CAF50';
-    directButton.style.color = 'white';
-    directButton.style.border = 'none';
-    directButton.style.borderRadius = '4px';
-    directButton.style.cursor = 'pointer';
-    directButton.style.fontWeight = 'bold';
-    directButton.style.fontSize = '16px';
-    directButton.style.marginBottom = '15px';
-    directButton.style.width = '250px';
-    directButton.onclick = () => {
-      // Try clicking the save as pdf button
-      const pdfButtons = [
-        ...document.querySelectorAll('button[aria-label="Save as PDF"]'),
-        ...document.querySelectorAll('.save-pdf-button'),
-        ...Array.from(document.querySelectorAll('button')).filter(btn => 
-          (btn.textContent || '').trim().toLowerCase() === 'save as pdf'
-        ),
-        ...document.querySelectorAll('a.pdf-download-button')
-      ];
-      
-      if (pdfButtons.length > 0) {
-        details.textContent = 'Clicking Save as PDF button...';
-        try {
-          pdfButtons[0].click();
-          details.textContent = 'PDF download triggered!';
-          setTimeout(() => {
-            overlay.remove();
-          }, 2000);
-        } catch (error) {
-          details.textContent = 'Error clicking button. Try capture method instead.';
-          console.error('Error clicking PDF button:', error);
-        }
-      } else {
-        details.textContent = 'No Save as PDF button found. Try capture method instead.';
-      }
-    };
     
     // Main button for capture
     const captureButton = document.createElement('button');
@@ -279,7 +60,6 @@
     
     overlay.appendChild(message);
     overlay.appendChild(details);
-    overlay.appendChild(directButton);
     overlay.appendChild(captureButton);
     overlay.appendChild(cancelButton);
     document.body.appendChild(overlay);
@@ -375,7 +155,7 @@
         
         updateStatus(`Detected ${totalSlides} slides, preparing to capture...`, 5);
         
-        // Array to store slide content
+        // Array to store slide content - this time we'll just capture text and simplified content
         const slideContents = [];
         let currentSlide = 1;
         
@@ -391,7 +171,7 @@
           content: captureVisibleContent()
         });
         
-        // Function to capture the visible content
+        // Function to capture the visible content with simplified approach
         function captureVisibleContent() {
           try {
             // Find the most likely content container
@@ -440,14 +220,11 @@
             // Clone the content to manipulate it
             const clone = contentElement.cloneNode(true);
             
-            // Remove scripts
-            const scripts = clone.querySelectorAll('script');
-            scripts.forEach(script => script.remove());
+            // Remove scripts and styles
+            clone.querySelectorAll('script, style').forEach(el => el.remove());
             
             // Remove navigation elements
-            const navElements = clone.querySelectorAll('[class*="nav"], [class*="button"], [class*="control"]');
-            navElements.forEach(el => {
-              // Only remove if it's small enough to likely be a UI element
+            clone.querySelectorAll('[class*="nav"], [class*="button"], [class*="control"]').forEach(el => {
               const rect = el.getBoundingClientRect();
               if (rect.width < 200 && rect.height < 200) {
                 el.remove();
@@ -530,114 +307,156 @@
         // Get title
         const title = document.title.replace(' | DocSend', '').trim() || 'DocSend Document';
         
-        // Create HTML document
-        let html = `
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="UTF-8">
-            <title>${title}</title>
-            <style>
+        // Simplified HTML that can be easily downloaded
+        const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>${title}</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              line-height: 1.6;
+              background: #f8f9fa;
+              color: #333;
+              padding: 20px;
+              margin: 0;
+            }
+            .container {
+              max-width: 800px;
+              margin: 0 auto;
+              background: white;
+              padding: 30px;
+              box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            h1 {
+              text-align: center;
+              margin-bottom: 30px;
+              color: #1a73e8;
+            }
+            .slide {
+              margin-bottom: 40px;
+              page-break-after: always;
+              border: 1px solid #ddd;
+              background: white;
+              padding: 20px;
+            }
+            .slide-header {
+              padding: 10px;
+              background: #f5f5f5;
+              border-bottom: 1px solid #ddd;
+              margin-bottom: 15px;
+            }
+            img {
+              max-width: 100%;
+              height: auto;
+              margin: 10px 0;
+            }
+            .download-options {
+              display: flex;
+              flex-direction: column;
+              margin: 20px 0;
+              padding: 15px;
+              background: #f0f7ff;
+              border-radius: 4px;
+            }
+            .download-button {
+              display: inline-block;
+              padding: 10px 15px;
+              margin: 5px;
+              background: #1a73e8;
+              color: white;
+              text-decoration: none;
+              border-radius: 4px;
+              text-align: center;
+              font-weight: bold;
+            }
+            @media print {
               body {
-                margin: 0;
+                background: white;
                 padding: 0;
-                font-family: Arial, sans-serif;
-                background-color: #f0f0f0;
               }
-              .header {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                background-color: #4285F4;
-                color: white;
-                padding: 16px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                z-index: 1000;
-                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+              .container {
+                box-shadow: none;
+                padding: 0;
+                max-width: 100%;
               }
-              .header h1 {
-                margin: 0;
-                font-size: 20px;
-                font-weight: bold;
-              }
-              .print-button {
-                background-color: white;
-                color: #4285F4;
-                border: none;
-                border-radius: 4px;
-                padding: 8px 16px;
-                font-weight: bold;
-                cursor: pointer;
-              }
-              .content {
-                margin-top: 80px;
-                padding: 20px;
+              .download-options {
+                display: none;
               }
               .slide {
-                background-color: white;
-                margin-bottom: 30px;
-                border: 1px solid #ddd;
-                border-radius: 8px;
-                overflow: hidden;
-                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                border: none;
                 page-break-after: always;
+                page-break-inside: avoid;
+                margin-bottom: 0;
+                padding: 0;
               }
               .slide-header {
-                padding: 10px;
-                background-color: #f5f5f5;
-                border-bottom: 1px solid #ddd;
-                font-weight: bold;
+                background: none;
+                border: none;
+                padding: 5px 0;
               }
-              .slide-content {
-                padding: 20px;
-              }
-              @media print {
-                .header {
-                  display: none;
-                }
-                .content {
-                  margin-top: 0;
-                }
-                .slide {
-                  break-after: page;
-                  border: none;
-                  box-shadow: none;
-                  margin-bottom: 0;
-                }
-                .slide-header {
-                  display: none;
-                }
-              }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h1>${title}</h1>
-              <button class="print-button" onclick="window.print()">Save as PDF</button>
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>${title}</h1>
+            
+            <div class="download-options">
+              <p>Click one of the options below to download:</p>
+              <a href="#" class="download-button" id="download-html">Download as Web Page (.html)</a>
+              <a href="#" class="download-button" id="download-docx">Download as Word Document (.docx)</a>
+              <a href="#" class="download-button" id="print-pdf">Print as PDF</a>
             </div>
-            <div class="content">
-        `;
-        
-        // Add each slide
-        slideContents.forEach(slide => {
-          html += `
-            <div class="slide">
-              <div class="slide-header">Slide ${slide.index} of ${totalSlides}</div>
-              <div class="slide-content">
-                ${slide.content}
+            
+            ${slideContents.map(slide => `
+              <div class="slide">
+                <div class="slide-header">Slide ${slide.index} of ${totalSlides}</div>
+                <div class="slide-content">
+                  ${slide.content}
+                </div>
               </div>
-            </div>
-          `;
-        });
-        
-        // Close HTML
-        html += `
-            </div>
-          </body>
-          </html>
+            `).join('')}
+          </div>
+          
+          <script>
+            // HTML download
+            document.getElementById('download-html').addEventListener('click', function(e) {
+              e.preventDefault();
+              // Create a clone of the document without download buttons
+              const cloneDoc = document.documentElement.cloneNode(true);
+              const downloadOptions = cloneDoc.querySelector('.download-options');
+              if (downloadOptions) downloadOptions.remove();
+              
+              const htmlContent = '<!DOCTYPE html>' + cloneDoc.outerHTML;
+              const blob = new Blob([htmlContent], {type: 'text/html'});
+              const url = URL.createObjectURL(blob);
+              
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = '${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.html';
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            });
+            
+            // PDF printing
+            document.getElementById('print-pdf').addEventListener('click', function(e) {
+              e.preventDefault();
+              window.print();
+            });
+            
+            // Simple DOCX generation
+            document.getElementById('download-docx').addEventListener('click', function(e) {
+              e.preventDefault();
+              alert("To download as a Word document (.docx):\\n\\n1. Right-click on this page\\n2. Select 'Save As' or 'Save Page As'\\n3. Choose 'Web Page, Complete' or 'Webpage, HTML Only'\\n4. Save the file\\n5. Open it in Microsoft Word or Google Docs");
+            });
+          </script>
+        </body>
+        </html>
         `;
         
         // Open in new tab
@@ -653,7 +472,7 @@
         if (!newTab || newTab.closed || typeof newTab.closed === 'undefined') {
           updateStatus('Popup blocked! Please allow popups and try again.', 100);
         } else {
-          updateStatus('Document opened in new tab! Click "Save as PDF" button.', 100);
+          updateStatus('Document opened in new tab with download options!', 100);
           
           // Show close button
           const closeButton = document.createElement('button');
