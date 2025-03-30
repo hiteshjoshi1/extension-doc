@@ -155,6 +155,9 @@
         
         updateStatus(`Detected ${totalSlides} slides, preparing to capture...`, 5);
         
+        // Skip detection flag for first slide
+        let skipFirstSlide = false;
+        
         // Array to store slide content - this time we'll just capture text and simplified content
         const slideContents = [];
         let currentSlide = 1;
@@ -165,14 +168,39 @@
         // Wait for slide to load
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Capture visible content
-        slideContents.push({
-          index: currentSlide,
-          content: captureVisibleContent()
-        });
+        // Check first slide for DocSend title page
+        const firstSlideContent = captureVisibleContent(1);
+        
+        // Check if the first slide is the DocSend title slide
+        if (isDocSendTitleSlide(firstSlideContent)) {
+          console.log("Detected DocSend title slide, skipping first slide");
+          skipFirstSlide = true;
+        } else {
+          // If not a title slide, add it to contents
+          slideContents.push({
+            index: 1,
+            content: firstSlideContent
+          });
+        }
+        
+        // Function to determine if this is a DocSend title slide
+        function isDocSendTitleSlide(html) {
+          // Create a temporary div to parse HTML
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = html;
+          
+          // Get text content
+          const textContent = tempDiv.textContent.trim();
+          
+          // Check for DocSend title pattern (just the word "DocSend" and very little else)
+          return /^\s*DocSend\s*$/i.test(textContent) || 
+                 (textContent.length < 50 && 
+                  textContent.toLowerCase().includes('docsend') &&
+                  tempDiv.querySelectorAll('img').length === 0);
+        }
         
         // Function to capture the visible content with simplified approach
-        function captureVisibleContent() {
+        function captureVisibleContent(slideNum) {
           try {
             // Find the most likely content container
             const containers = [
@@ -295,9 +323,10 @@
           updateStatus(`Capturing slide ${currentSlide} of ${totalSlides}...`, progress);
           
           // Capture content
+          const slideContent = captureVisibleContent(currentSlide);
           slideContents.push({
-            index: currentSlide,
-            content: captureVisibleContent()
+            index: skipFirstSlide ? currentSlide - 1 : currentSlide,
+            content: slideContent
           });
         }
         
@@ -306,6 +335,15 @@
         
         // Get title
         const title = document.title.replace(' | DocSend', '').trim() || 'DocSend Document';
+        
+        // Simplify slide indices if we skipped the first slide
+        if (skipFirstSlide) {
+          slideContents.forEach((slide, idx) => {
+            slide.index = idx + 1;
+          });
+        }
+        
+        console.log(`Total slides captured: ${slideContents.length}`);
         
         // Simplified HTML that can be easily downloaded - removed download options section
         const html = `
@@ -384,7 +422,7 @@
             
             ${slideContents.map(slide => `
               <div class="slide">
-                <div class="slide-header">Slide ${slide.index} of ${totalSlides}</div>
+                <div class="slide-header">Slide ${slide.index} of ${slideContents.length}</div>
                 <div class="slide-content">
                   ${slide.content}
                 </div>
